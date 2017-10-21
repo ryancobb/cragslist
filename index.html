@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <style>
+      /* Always set the map height explicitly to define the size of the div
+       * element that contains the map. */
+      #map {
+        height: 100%;
+      }
+      /* Optional: Makes the sample page fill the window. */
+      html, body {
+        height: 100%;
+        margin: 0;
+        padding: 0;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="map"></div>
+    <script>
+      var map;
+      var infowindow;
+      var routes;
+      function initMap() {
+        infowindow = new google.maps.InfoWindow();
+        map = new google.maps.Map(document.getElementById('map'), {
+          zoom: 12,
+          center: new google.maps.LatLng(40.71,-111.79),
+          mapTypeId: 'terrain'
+        });
+
+        populateRoutes();
+      }
+
+      function populateRoutes() {
+        fetch(routesUrl())
+          .then(function(response) { 
+            response.json().then(function(data) {
+              routes = data.routes
+              
+              for (var i = 0; i < routes.length; i++) {
+                placeMarker(routes[i]);
+              }
+            })
+          })
+      }
+
+      function placeMarker(route) {
+        var latLng = new google.maps.LatLng(route.latitude, route.longitude);
+        var marker = new google.maps.Marker({
+          position: latLng,
+          title: route.name,
+          map: map
+        });
+        
+        google.maps.event.addListener(marker, 'click', function() {
+          infowindow.close();
+          infowindow.setContent(routeContent(route));
+          infowindow.open(map, marker);
+        })
+      }
+
+      function routeContent(route) {
+        return "<h3>" + route.name + "</h3>" +
+          "type: " + route.type + "<p/>" + 
+          "rating: " + route.rating + "<p/>" + 
+          "stars: " + route.stars + "<p/>" + 
+          "link: <a href='" + route.url + "' target='blank'>" + route.url + "</a>"
+      }
+
+      function routesUrl() {
+        var latLng = map.getCenter();
+        
+        return "https://www.mountainproject.com/data/get-routes-for-lat-lon?lat=" + latLng.lat() + "&lon=" + latLng.lng() + "&maxDistance=5&maxResults=500&minDiff=5.6&maxDiff=5.10&key=200172405-73901e6f75f6e9c5315f03043606e7b1"
+      }
+    </script>
+    <script async defer
+    src="https://maps.googleapis.com/maps/api/js?key=AIzaSyAYKopfKPfj1xQgu6q9aqthkOEPohBYaFU&callback=initMap">
+    </script>
+  </body>
+</html>
