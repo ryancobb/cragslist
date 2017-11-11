@@ -21,6 +21,8 @@
       var map;
       var infowindow;
       var routes;
+      var placed_routes = [];
+
       function initMap() {
         infowindow = new google.maps.InfoWindow();
         map = new google.maps.Map(document.getElementById('map'), {
@@ -29,7 +31,9 @@
           mapTypeId: 'terrain'
         });
 
-        populateRoutes();
+        map.addListener('idle', function() {
+          populateRoutes();
+        });
       }
 
       function populateRoutes() {
@@ -39,25 +43,33 @@
               routes = data.routes
               
               for (var i = 0; i < routes.length; i++) {
-                placeMarker(routes[i]);
+                var routeType = routes[i].type;
+
+                if (routeType.includes("Sport") || routeType.includes("TR")) {
+                  placeMarker(routes[i]);
+                }
               }
             })
           })
       }
 
       function placeMarker(route) {
-        var latLng = new google.maps.LatLng(route.latitude, route.longitude);
-        var marker = new google.maps.Marker({
-          position: latLng,
-          title: route.name,
-          map: map
-        });
-        
-        google.maps.event.addListener(marker, 'click', function() {
-          infowindow.close();
-          infowindow.setContent(routeContent(route));
-          infowindow.open(map, marker);
-        })
+        if (!placed_routes.includes(route.id)) {
+          var latLng = new google.maps.LatLng(route.latitude, route.longitude);
+          var marker = new google.maps.Marker({
+            position: latLng,
+            label: route.type.charAt(0),
+            map: map
+          });
+          
+          google.maps.event.addListener(marker, 'click', function() {
+            infowindow.close();
+            infowindow.setContent(routeContent(route));
+            infowindow.open(map, marker);
+          })
+
+          placed_routes.push(route.id);
+        }
       }
 
       function routeContent(route) {
@@ -68,10 +80,31 @@
           "link: <a href='" + route.url + "' target='blank'>" + route.url + "</a>"
       }
 
+      function viewportInMiles() {
+        var bounds = map.getBounds();
+        var center = bounds.getCenter();
+        var ne = bounds.getNorthEast();
+
+        // r = radius of earth in miles
+        var r = 3963.0
+
+        //Convert lat or lng from decimal degrees into radians (divide by 57.2958)
+        var lat1 = center.lat() / 57.2958; 
+        var lon1 = center.lng() / 57.2958;
+        var lat2 = ne.lat() / 57.2958;
+        var lon2 = ne.lng() / 57.2958;
+
+        // distance = circle radius from center to Northeast corner of bounds
+        var dis = r * Math.acos(Math.sin(lat1) * Math.sin(lat2) + 
+          Math.cos(lat1) * Math.cos(lat2) * Math.cos(lon2 - lon1));
+
+        return Math.round(dis)
+      }
+
       function routesUrl() {
         var latLng = map.getCenter();
         
-        return "https://www.mountainproject.com/data/get-routes-for-lat-lon?lat=" + latLng.lat() + "&lon=" + latLng.lng() + "&maxDistance=5&maxResults=500&minDiff=5.6&maxDiff=5.10&key=200172405-73901e6f75f6e9c5315f03043606e7b1"
+        return "https://www.mountainproject.com/data/get-routes-for-lat-lon?lat=" + latLng.lat() + "&lon=" + latLng.lng() + "&maxDistance=" + viewportInMiles() + "&maxResults=500&minDiff=5.6&maxDiff=5.10&key=200172405-73901e6f75f6e9c5315f03043606e7b1"
       }
     </script>
     <script async defer
